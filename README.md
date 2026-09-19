@@ -115,8 +115,7 @@ ros2 run rqt_graph rqt_graph
 ## 注意事项
 1. 若 RViz 显示异常（如无机器人模型），检查环境变量是否加载：`echo $ROS_PACKAGE_PATH`，确保工作空间路径已包含。
 2. 编译失败时，尝试删除 `build`、`install`、`log` 目录后重新编译：`rm -rf build install log && colcon build --symlink-install`。
-3. Docker 中 GUI 显示失败，需在主机执行：`xhost +`（临时允许容器访问显示器）。
-4. 自定义机器人模型后，需重新生成 MoveIt2 配置：`ros2 launch moveit_setup_assistant setup_assistant.launch.py`。
+3. 自定义机器人模型后，需重新生成 MoveIt2 配置：`ros2 launch moveit_setup_assistant setup_assistant.launch.py`。
 
 ## 参考资料
 - [MoveIt2 官方文档](https://moveit.picknik.ai/humble/index.html)
