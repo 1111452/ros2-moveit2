@@ -17,6 +17,7 @@ Makefile
 
 # VS Code
 .vscode/
+.marscode/
 
 # Python virtual environments
 venv/
