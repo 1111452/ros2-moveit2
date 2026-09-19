@@ -1,228 +1,125 @@
-# ROS 2 MoveIt 2 机械臂控制
+## 项目目的
+本仓库旨在学习和实践 **MoveIt2 运动规划框架**，通过搭建机器人模型、配置 MoveIt2 核心组件及编写控制逻辑，实现机器人的运动规划与实时控制。
 
-这是一个基于 ROS 2 Jazzy 和 MoveIt 2 的六自由度机械臂示例工程，包含机械臂 URDF/Xacro 描述、MoveIt 配置、ros2_control 仿真控制器，以及 C++ 控制节点。
+项目提供从机器人模型描述、MoveIt2 配置到控制代码的完整示例，适用于 ROS 2 开发者、机器人运动规划学习者，可作为入门实践参考或二次开发基础。
 
-当前工程使用 `mock_components/GenericSystem` 作为 ros2_control 硬件，因此可以在没有真实机械臂的情况下完成运动规划和轨迹执行测试。
+## 主要内容
+| 功能包名称               | 核心作用                                                                 |
+|--------------------------|--------------------------------------------------------------------------|
+| `my_robot_description`   | 机器人模型定义（URDF/Xacro 格式），包含碰撞属性、可视化配置及模型展示 launch 文件 |
+| `my_robot_moveit_config` | MoveIt2 核心配置，含运动学参数、关节限制、控制器配置、move_group 启动文件       |
+| `my_robot_commander_cpp` | C++ 控制示例代码，支持目标位姿规划、关节角度控制、笛卡尔路径规划等功能         |
+| `my_robot_bringup`       | 系统整合启动包，提供一键启动机器人描述、控制器、MoveIt2 节点的 launch 文件     |
+| `my_robot_interfaces`    | 自定义 ROS 2 消息类型，用于传递机器人位姿控制指令（如坐标、姿态参数）           |
 
-## 功能
+核心特性：
+- 支持多种运动规划模式（关节空间规划、笛卡尔空间规划）
+- 提供 ROS 2 话题接口，可外部发送控制指令
+- 包含 RViz 可视化配置，实时查看机器人状态与规划路径
+- 兼容 MoveIt2 原生工具链，支持手动规划与代码控制双模式
 
-- 六个关节的机械臂模型和一个平行夹爪
-- URDF/Xacro 模型描述和 RViz 可视化
-- MoveIt 2 运动规划
-- `ros2_control` 模拟硬件和关节轨迹控制器
-- 机械臂关节目标、位姿目标和笛卡尔路径控制
-- 夹爪打开与关闭控制
-- 自定义 `PoseCommand` 消息
+## 环境搭建
+### 前置依赖
+- 操作系统：Ubuntu 24.04 
+- ROS 2 版本：Jazzy
+- 核心依赖：MoveIt2、Joint State Publisher、Controller Manager、Xacro
 
-## 环境
+### 安装步骤
+1. **安装 ROS 2 与 MoveIt2**
+   参考 [ROS 2 官方安装指南](https://docs.ros.org/en/jazzy/Installation.html) 完成 ROS 2 Jazzy 安装，再安装 MoveIt2 依赖：
+   ```bash
+   sudo apt update && sudo apt install -y ros-jazzy-moveit
+   ```
 
-- Ubuntu 24.04
-- ROS 2 Jazzy
-- MoveIt 2
-- `colcon`
-- C++ 编译器和 CMake
 
-安装常用依赖：
+2. **安装其他依赖包**
+   ```bash
+   sudo apt install -y \
+     ros-humble-joint-state-publisher-gui \
+     ros-humble-controller-manager \
+     ros-humble-xacro \
+     ros-humble-example-interfaces \
+     python3-colcon-common-extensions
+   ```
 
+3. **构建工作空间**
+   ```bash
+   # 创建工作空间（若已存在可跳过）
+   mkdir -p ~/moveit2_ws/src && cd ~/moveit2_ws/src
+
+   # 克隆本仓库
+   git clone https://github.com/1111452/ros2-moveit2/tree/main.git
+
+   # 编译工作空间
+   cd ~/moveit2_ws
+   colcon build
+
+   # 加载环境变量（每次新终端启动需执行，或添加到 ~/.bashrc 永久生效）
+   source install/setup.bash
+   ```
+
+## 样例执行
+### 1. 可视化机器人模型
+验证机器人模型是否正常加载：
 ```bash
-sudo apt update
-sudo apt install \
-  ros-jazzy-moveit \
-  ros-jazzy-xacro \
-  ros-jazzy-ros2-control \
-  ros-jazzy-ros2-controllers \
-  ros-jazzy-controller-manager \
-  ros-jazzy-joint-state-publisher-gui \
-  ros-jazzy-example-interfaces
+ros2 launch urdf_tutorial display.launch.py model:=$(ros2 pkg prefix my_robot_description --share)/urdf/my_robot.urdf.xacro
 ```
+- 效果：启动 RViz 并显示机器人模型，可通过「Joint State Publisher GUI」滑动条手动调整关节角度。
 
-## 工作区结构
-
-```text
-src/
-├── my_robot_description/       # URDF/Xacro、RViz 配置和模型展示启动文件
-├── my_robot_interfaces/        # 自定义 ROS 2 消息
-├── my_robot_moveit_config/     # SRDF、运动学、规划器和 MoveIt 启动文件
-├── my_robot_bringup/            # 一键启动机器人、控制器、MoveIt 和 RViz
-├── my_robot_commander_cpp/      # C++ MoveIt 控制节点
-└── my_robot_commander_py/       # Python 控制节点模板
-```
-
-## 编译
-
-本仓库的 Git 根目录是 `src`，但编译命令应在工作区根目录 `~/ros2_ws` 执行。
-
-如果当前终端显示 `(base)`，建议先退出 Conda，避免 Conda 的 Python 或动态库覆盖 ROS 2 Jazzy 的系统依赖：
-
+### 2. 启动完整 MoveIt2 系统
+一键启动机器人描述、控制器、MoveIt2 规划节点：
 ```bash
-conda deactivate
-source /opt/ros/jazzy/setup.bash
+ros2 launch my_robot_bringup my_robot.launch.xml
 ```
+- 效果：启动 RViz（加载 MoveIt2 配置）、move_group 节点、控制器管理器，可在 RViz 中通过「Motion Planning」面板手动规划运动。
 
-然后编译：
-
+### 3. 运行代码控制示例
+#### 3.1 基础运动测试
+在新终端中运行预定义的运动控制节点（需先启动完整 MoveIt2 系统）：
 ```bash
-cd ~/ros2_ws
-colcon build --symlink-install
-source install/setup.bash
+source ~/moveit2_ws/install/setup.bash
+ros2 run my_robot_commander_cpp test_moveit
 ```
+- 功能：演示机器人手臂从初始位姿到目标位姿的规划与执行，包含关节空间规划和笛卡尔路径规划。
 
-如果只修改了接口包或 C++ 控制节点，可以使用：
-
+#### 3.2 话题指令控制
+运行指挥官节点，通过 ROS 2 话题发送控制指令：
 ```bash
-colcon build --packages-up-to my_robot_commander_cpp --symlink-install
-source install/setup.bash
-```
-
-## 一键启动
-
-一键启动机器人模型、ros2_control 控制器、MoveIt、C++ commander 和 RViz：
-
-```bash
-cd ~/ros2_ws
-source install/setup.bash
-ros2 launch my_robot_bringup robot.launch.xml
-```
-
-启动后可以检查控制器：
-
-```bash
-ros2 control list_controllers
-```
-
-正常情况下应包含以下活动控制器：
-
-```text
-joint_state_broadcaster
-arm_controller
-gripper_controller
-```
-
-检查 MoveIt 使用的轨迹 action：
-
-```bash
-ros2 action list | grep follow_joint_trajectory
-```
-
-## 分开启动
-
-只查看机械臂模型：
-
-```bash
-ros2 launch my_robot_description display.launch.py
-```
-
-只启动 MoveIt 的演示配置：
-
-```bash
-ros2 launch my_robot_moveit_config demo.launch.py
-```
-
-也可以分别启动 MoveIt 和 RViz：
-
-```bash
-ros2 launch my_robot_moveit_config move_group.launch.py
-ros2 launch my_robot_moveit_config moveit_rviz.launch.py
-```
-
-不要在已经运行 `robot.launch.xml` 时再次启动这些节点，否则可能出现重复的 RViz、robot state publisher 或 MoveIt 节点。
-
-## 控制接口
-
-### 打开和关闭夹爪
-
-`/open_gripper` 使用 `example_interfaces/msg/Bool`：
-
-```bash
-# 关闭夹爪
-ros2 topic pub --once /open_gripper example_interfaces/msg/Bool "{data: false}"
-
-# 打开夹爪
-ros2 topic pub --once /open_gripper example_interfaces/msg/Bool "{data: true}"
-```
-
-### 发送关节目标
-
-`/joint_command` 使用 `example_interfaces/msg/Float64MultiArray`，数组顺序为 `joint1` 到 `joint6`：
-
-```bash
-ros2 topic pub --once /joint_command \
-  example_interfaces/msg/Float64MultiArray \
-  "{data: [0.0, 0.3, 0.5, 0.0, 0.2, 0.0]}"
-```
-
-### 发送位姿目标
-
-`/pose_command` 使用自定义消息 `my_robot_interfaces/msg/PoseCommand`，位置单位为米，角度单位为弧度：
-
-```bash
-ros2 topic pub --once /pose_command \
-  my_robot_interfaces/msg/PoseCommand \
-  "{x: 0.7, y: 0.0, z: 0.4, roll: 3.14, pitch: 0.0, yaw: 0.0, cartesian_path: false}"
-```
-
-设置 `cartesian_path: true` 时，控制节点会尝试使用笛卡尔路径执行目标。
-
-查看自定义消息定义：
-
-```bash
-ros2 interface show my_robot_interfaces/msg/PoseCommand
-```
-
-## C++ 控制节点
-
-启动 C++ commander：
-
-```bash
+# 启动指挥官节点
 ros2 run my_robot_commander_cpp commander
 ```
 
-该节点订阅以下话题：
+在新终端中发送以下指令测试：
+- **控制夹爪开合**：
+  ```bash
+  ros2 topic pub /open_gripper std_msgs/msg/Bool "{data: true}"  # 打开夹爪
+  ros2 topic pub /open_gripper std_msgs/msg/Bool "{data: false}" # 关闭夹爪
+  ```
 
-| 话题 | 消息类型 | 用途 |
-| --- | --- | --- |
-| `/open_gripper` | `example_interfaces/msg/Bool` | 打开或关闭夹爪 |
-| `/joint_command` | `example_interfaces/msg/Float64MultiArray` | 发送六个关节目标 |
-| `/pose_command` | `my_robot_interfaces/msg/PoseCommand` | 发送末端位姿目标 |
+- **发送关节角度目标**（6个关节角度，范围：-π~π）：
+  ```bash
+  ros2 topic pub /joint_command std_msgs/msg/Float64MultiArray "{data: [0.0, 0.5, -0.5, 0.0, 0.5, -0.5]}"
+  ```
 
-## 常见问题
+- **发送位姿目标**（x,y,z 坐标 + roll,pitch,yaw 姿态，cartesian 表示是否使用笛卡尔路径）：
+  ```bash
+  ros2 topic pub /pose_command my_robot_interfaces/msg/PoseCommand "{x: 0.3, y: 0.0, z: 0.4, roll: 0.0, pitch: 0.0, yaw: 0.0, cartesian: false}"
+  ```
 
-### `my_robot_interfaces` 找不到
-
-确认接口包已经编译，并重新加载工作区环境：
-
+### 4. 查看系统拓扑
+可视化节点与话题的订阅/发布关系：
 ```bash
-colcon build --packages-select my_robot_interfaces my_robot_commander_cpp
-source install/setup.bash
+ros2 run rqt_graph rqt_graph
 ```
 
-### `Action client not connected to action server: arm_controller/follow_joint_trajectory`
+## 注意事项
+1. 若 RViz 显示异常（如无机器人模型），检查环境变量是否加载：`echo $ROS_PACKAGE_PATH`，确保工作空间路径已包含。
+2. 编译失败时，尝试删除 `build`、`install`、`log` 目录后重新编译：`rm -rf build install log && colcon build --symlink-install`。
+3. Docker 中 GUI 显示失败，需在主机执行：`xhost +`（临时允许容器访问显示器）。
+4. 自定义机器人模型后，需重新生成 MoveIt2 配置：`ros2 launch moveit_setup_assistant setup_assistant.launch.py`。
 
-这表示 MoveIt 已经完成规划，但没有找到轨迹控制器。确认 `ros2_control` 正在运行，并且 `arm_controller` 的类型是：
-
-```yaml
-joint_trajectory_controller/JointTrajectoryController
+## 参考资料
+- [MoveIt2 官方文档](https://moveit.picknik.ai/humble/index.html)
+- [ROS 2 Jazzy 官方教程](https://docs.ros.org/en/jazzy/Tutorials.html)
+- [URDF 机器人模型描述指南](https://docs.ros.org/en/humble/Tutorials/Intermediate/URDF/URDF-Main.html)
 ```
-
-### CMake 找到了 Conda Python 或 Conda 动态库
-
-先执行：
-
-```bash
-conda deactivate
-source /opt/ros/jazzy/setup.bash
-colcon build --symlink-install
-```
-
-### 只运行 `robot_state_publisher`
-
-直接把多行 xacro 输出放进 `-p robot_description:=...` 可能触发 ROS 2 YAML 解析错误。推荐使用本项目的 launch 文件，或先生成 URDF 文件：
-
-```bash
-xacro src/my_robot_description/urdf/my_robot.urdf.xacro -o /tmp/my_robot.urdf
-ros2 run robot_state_publisher robot_state_publisher /tmp/my_robot.urdf
-```
-
-## 许可证
-
-本项目目前用于学习和实验。各 ROS 2 依赖包的许可证以其官方项目声明为准。
