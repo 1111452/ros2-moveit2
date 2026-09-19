@@ -4,7 +4,7 @@
   <name>my_robot_commander_py</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="3487650498@qq.com">huanghao</maintainer>
+  <maintainer email="3487650498@qq.com">hh</maintainer>
   <license>TODO: License declaration</license>
 
   <depend>rclpy</depend>

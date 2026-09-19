@@ -4,7 +4,7 @@
   <name>my_robot_bringup</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="1311608868@qq.com">bigjelly</maintainer>
+  <maintainer email="3487650498@qq.com">hh</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
